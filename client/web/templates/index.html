@@ -666,6 +666,34 @@
         }
 
         async function startSync() {
+            // Auto-save config before starting sync
+            const downloadDir = document.getElementById('downloadDir').value;
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            if (!downloadDir) {
+                log('Please select a download directory first', 'error');
+                return;
+            }
+            
+            try {
+                // Save config first
+                const configResponse = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ download_dir: downloadDir, server_url: serverUrl })
+                });
+                
+                if (!configResponse.ok) {
+                    const data = await configResponse.json();
+                    log(`Failed to save config: ${data.error}`, 'error');
+                    return;
+                }
+                log(`Downloading to: ${downloadDir}`, 'info');
+            } catch (e) {
+                log(`Error saving config: ${e.message}`, 'error');
+                return;
+            }
+            
             const sinceDateInput = document.getElementById('sinceDate').value;
             
             // Convert date to ISO format with time (start of day)
@@ -808,6 +836,17 @@
                 if (data.success && data.path) {
                     document.getElementById('downloadDir').value = data.path;
                     log('Selected folder: ' + data.path, 'success');
+                    
+                    // Auto-save config when folder is selected
+                    const serverUrl = document.getElementById('serverUrl').value;
+                    const configResponse = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ download_dir: data.path, server_url: serverUrl })
+                    });
+                    if (configResponse.ok) {
+                        log('Configuration saved', 'success');
+                    }
                 } else if (data.error === 'User cancelled') {
                     log('Folder selection cancelled', 'info');
                 } else {
