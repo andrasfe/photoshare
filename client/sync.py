@@ -111,10 +111,46 @@ class PhotoSyncClient:
         
         Returns:
             Path to the downloaded file, or None if download failed
+            Returns "skipped" string if already downloaded
         """
+        # Check if already downloaded
+        if self._is_already_downloaded(photo_id):
+            logger.info(f"Skipping already downloaded: {photo_id}")
+            return "skipped"
+        
         # Always use regular download (Live Photo endpoint not always available)
-        # Live Photos will be downloaded as their primary image
-        return self._download_regular_photo(photo_id, photo_metadata)
+        result = self._download_regular_photo(photo_id, photo_metadata)
+        
+        # Mark as downloaded if successful
+        if result and result != "skipped":
+            self._mark_as_downloaded(photo_id)
+        
+        return result
+    
+    def _is_already_downloaded(self, photo_id: str) -> bool:
+        """Check if a photo has already been downloaded."""
+        downloaded_file = self.config.DOWNLOAD_DIR / ".downloaded_ids.json"
+        if not downloaded_file.exists():
+            return False
+        try:
+            downloaded = json.loads(downloaded_file.read_text())
+            return photo_id in downloaded
+        except:
+            return False
+    
+    def _mark_as_downloaded(self, photo_id: str) -> None:
+        """Mark a photo as downloaded."""
+        downloaded_file = self.config.DOWNLOAD_DIR / ".downloaded_ids.json"
+        try:
+            if downloaded_file.exists():
+                downloaded = json.loads(downloaded_file.read_text())
+            else:
+                downloaded = []
+            if photo_id not in downloaded:
+                downloaded.append(photo_id)
+                downloaded_file.write_text(json.dumps(downloaded))
+        except:
+            pass
     
     def _download_regular_photo(self, photo_id: str, photo_metadata: dict) -> Optional[Path]:
         """Download a regular photo or video."""

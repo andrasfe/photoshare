@@ -363,7 +363,15 @@ async def _run_sync(since_timestamp: Optional[float] = None):
                 # Download the photo
                 result = client.download_photo(photo_id, photo)
                 
-                if result:
+                if result == "skipped":
+                    # Already downloaded, skip
+                    await manager.broadcast({
+                        "type": "skipped",
+                        "current": sync_state.current_photo,
+                        "total": sync_state.total_photos,
+                        "photo_id": photo_id,
+                    })
+                elif result:
                     sync_state.downloaded_count += 1
                     file_size = result.stat().st_size if result.exists() else 0
                     sync_state.bytes_downloaded += file_size

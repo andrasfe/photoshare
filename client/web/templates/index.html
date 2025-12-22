@@ -604,6 +604,11 @@
                     updateProgressStats(data.current, data.total);
                     break;
 
+                case 'skipped':
+                    log(`⏭ Skipped (already downloaded)`, 'info');
+                    updateProgressStats(data.current, data.total);
+                    break;
+
                 case 'download_failed':
                     log(`✗ Failed to download photo ${data.photo_id}`, 'error');
                     break;
