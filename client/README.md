@@ -27,14 +27,28 @@ python run_web.py
 
 ## Configuration
 
-Create a `.env` file or set environment variables:
+Copy `.env.example` to `.env` and edit:
 
 ```bash
-PHOTOSHARE_SERVER_URL=http://localhost:8080
+cp ../.env.example .env
+# or
+cp ../.env.example ../.env  # place in project root
+```
+
+The client looks for `.env` in this order:
+1. `client/.env`
+2. Project root `.env`
+
+Example `.env`:
+
+```bash
+PHOTOSHARE_SERVER_URL=http://192.168.1.100:8080
 PHOTOSHARE_SECRET=your-shared-secret
 PHOTOSHARE_DOWNLOAD_DIR=./downloads
 PHOTOSHARE_POLL_INTERVAL=1
 ```
+
+Generate a secret: `openssl rand -hex 32`
 
 ## Usage
 
