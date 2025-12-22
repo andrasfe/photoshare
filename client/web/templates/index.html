@@ -264,6 +264,34 @@
             color: white;
         }
 
+        .date-picker-container {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .date-input {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .date-input::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+        }
+
+        .date-clear-btn {
+            padding: 0.875rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .form-hint {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
         .progress-section {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -457,8 +485,12 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Sync Photos Since (optional - leave empty for incremental sync)</label>
-                <input type="datetime-local" class="form-input" id="sinceDate">
+                <label class="form-label">Sync Photos Since</label>
+                <div class="date-picker-container">
+                    <input type="date" class="form-input date-input" id="sinceDate">
+                    <button type="button" class="btn btn-secondary date-clear-btn" onclick="clearDate()">Clear</button>
+                </div>
+                <span class="form-hint">Leave empty for incremental sync (only new photos since last sync)</span>
             </div>
             <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                 <button class="btn btn-primary" id="syncBtn" onclick="startSync()">
@@ -626,13 +658,20 @@
         }
 
         async function startSync() {
-            const sinceDate = document.getElementById('sinceDate').value;
+            const sinceDateInput = document.getElementById('sinceDate').value;
+            
+            // Convert date to ISO format with time (start of day)
+            let sinceDate = null;
+            if (sinceDateInput) {
+                sinceDate = sinceDateInput + 'T00:00:00';
+                log(`Syncing photos since ${sinceDateInput}`, 'info');
+            }
             
             try {
                 const response = await fetch('/api/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ since_date: sinceDate || null })
+                    body: JSON.stringify({ since_date: sinceDate })
                 });
                 
                 if (!response.ok) {
@@ -750,6 +789,11 @@
             
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
+        }
+
+        function clearDate() {
+            document.getElementById('sinceDate').value = '';
+            log('Date filter cleared - will sync incrementally', 'info');
         }
 
         function clearLog() {
