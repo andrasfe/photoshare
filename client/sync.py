@@ -122,7 +122,9 @@ class PhotoSyncClient:
     
     def _download_regular_photo(self, photo_id: str, photo_metadata: dict) -> Optional[Path]:
         """Download a regular photo or video."""
-        path = f"/photos/{photo_id}/download"
+        from urllib.parse import quote
+        encoded_id = quote(photo_id, safe='')
+        path = f"/photos/{encoded_id}/download"
         
         try:
             response = self._make_request("GET", path)
@@ -169,7 +171,9 @@ class PhotoSyncClient:
     
     def _download_live_photo(self, photo_id: str, photo_metadata: dict) -> Optional[Path]:
         """Download a Live Photo (photo + video components)."""
-        path = f"/photos/{photo_id}/livephoto"
+        from urllib.parse import quote
+        encoded_id = quote(photo_id, safe='')
+        path = f"/photos/{encoded_id}/livephoto"
         
         try:
             response = self._make_request("GET", path)

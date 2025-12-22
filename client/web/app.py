@@ -289,6 +289,20 @@ async def _run_sync(since_timestamp: Optional[float] = None):
             # Use provided timestamp or last sync time
             effective_since = since_timestamp or client.get_last_sync_time()
             
+            # Log what date we're using
+            if effective_since:
+                from datetime import datetime as dt
+                since_str = dt.fromtimestamp(effective_since).isoformat()
+                await manager.broadcast({
+                    "type": "status_update",
+                    "message": f"Fetching photos since {since_str}"
+                })
+            else:
+                await manager.broadcast({
+                    "type": "status_update", 
+                    "message": "Fetching ALL photos (no date filter)"
+                })
+            
             try:
                 photos = client.list_photos(since=effective_since)
             except Exception as e:
