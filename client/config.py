@@ -5,7 +5,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+# Check client directory first, then project root
+_client_dir = Path(__file__).parent
+_project_root = _client_dir.parent
+
+# Try to load from client/.env first, then from project root/.env
+if (_client_dir / ".env").exists():
+    load_dotenv(_client_dir / ".env")
+elif (_project_root / ".env").exists():
+    load_dotenv(_project_root / ".env")
+else:
+    load_dotenv()  # Fall back to default behavior
 
 
 class Config:
