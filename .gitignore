@@ -1,10 +1,13 @@
 # Runtime files (created by start.sh)
-.server.pid
-.server.log
 .client.pid
 .client.log
+
+# Server app build artifacts
+server-app/.build/
+server-app/.swiftpm/
 
 # OS files
 .DS_Store
 Thumbs.db
+.build
 
