@@ -258,6 +258,18 @@ Downloads Live Photo as multipart response containing both HEIC image and MOV vi
 - Check firewall settings
 - Ensure correct IP/port in client configuration
 
+## Disclaimer
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**Use at your own risk.** The authors are not responsible for:
+- Any data loss, corruption, or unauthorized access to your photos
+- Any damage to your devices or systems
+- Any privacy or security breaches resulting from use of this software
+- Any violations of Apple's terms of service or local laws
+
+This software accesses your Photos library and transmits data over the network. Ensure you understand the security implications before use.
+
 ## License
 
 MIT
