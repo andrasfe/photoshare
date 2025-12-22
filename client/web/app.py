@@ -225,6 +225,36 @@ async def health_check():
         }
 
 
+@app.get("/api/browse")
+async def browse_folder():
+    """Open a native folder picker dialog."""
+    import subprocess
+    
+    # Use osascript to open a native folder picker on macOS
+    script = '''
+    set chosenFolder to choose folder with prompt "Select Download Directory"
+    return POSIX path of chosenFolder
+    '''
+    
+    try:
+        result = subprocess.run(
+            ['osascript', '-e', script],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            folder_path = result.stdout.strip()
+            return {"path": folder_path, "success": True}
+        else:
+            return {"path": None, "success": False, "error": "User cancelled"}
+    except subprocess.TimeoutExpired:
+        return {"path": None, "success": False, "error": "Dialog timeout"}
+    except Exception as e:
+        return {"path": None, "success": False, "error": str(e)}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time updates."""

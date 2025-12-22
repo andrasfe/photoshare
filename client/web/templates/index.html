@@ -477,7 +477,10 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Destination Directory</label>
-                    <input type="text" class="form-input" id="downloadDir" value="{{ download_dir }}" placeholder="/path/to/downloads">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" class="form-input" id="downloadDir" value="{{ download_dir }}" placeholder="/path/to/downloads" style="flex: 1;">
+                        <button class="btn btn-secondary" onclick="browseFolder()" title="Browse...">📁</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Server URL</label>
@@ -794,6 +797,25 @@
             
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
+        }
+
+        async function browseFolder() {
+            try {
+                log('Opening folder picker...', 'info');
+                const response = await fetch('/api/browse');
+                const data = await response.json();
+                
+                if (data.success && data.path) {
+                    document.getElementById('downloadDir').value = data.path;
+                    log('Selected folder: ' + data.path, 'success');
+                } else if (data.error === 'User cancelled') {
+                    log('Folder selection cancelled', 'info');
+                } else {
+                    log('Failed to select folder: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                log('Error opening folder picker: ' + error.message, 'error');
+            }
         }
 
         function clearDate() {
