@@ -1,0 +1,10 @@
+# Runtime files (created by start.sh)
+.server.pid
+.server.log
+.client.pid
+.client.log
+
+# OS files
+.DS_Store
+Thumbs.db
+

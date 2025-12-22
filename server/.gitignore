@@ -18,3 +18,7 @@ Packages/
 *.sublime-*
 .vscode/
 
+# Runtime files
+.server.pid
+.server.log
+

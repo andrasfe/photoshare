@@ -21,3 +21,7 @@ downloads/
 *.sublime-*
 .vscode/
 
+# Runtime files
+.client.pid
+.client.log
+
