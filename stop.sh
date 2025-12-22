@@ -1,10 +1,12 @@
 #!/bin/bash
 #
-# PhotoShare Client Stop Script
-# Stops the Python web client.
+# PhotoShare Stop Script
+# Stops server and/or client services.
 #
-# Note: The server is managed via the PhotoShare Server app.
-#       Use the app's UI or Cmd+Q to stop it.
+# Usage:
+#   ./stop.sh           # Stop all running components
+#   ./stop.sh server    # Stop server only
+#   ./stop.sh client    # Stop client only
 #
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,15 +18,49 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# PID file
+# PID files
+SERVER_PID_FILE="$SCRIPT_DIR/.server.pid"
 CLIENT_PID_FILE="$SCRIPT_DIR/.client.pid"
 
 print_banner() {
     echo -e "${BLUE}"
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                    PhotoShare Client Stop                     ║"
+    echo "║                       PhotoShare Stop                         ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
+}
+
+stop_server() {
+    if [[ -f "$SERVER_PID_FILE" ]]; then
+        local pid=$(cat "$SERVER_PID_FILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            echo -e "${BLUE}Stopping server (PID: $pid)...${NC}"
+            kill "$pid" 2>/dev/null
+            
+            # Wait for graceful shutdown
+            for i in {1..10}; do
+                if ! kill -0 "$pid" 2>/dev/null; then
+                    break
+                fi
+                sleep 0.5
+            done
+            
+            # Force kill if still running
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid" 2>/dev/null
+            fi
+            
+            echo -e "${GREEN}✓ Server stopped${NC}"
+        else
+            echo -e "${YELLOW}Server not running${NC}"
+        fi
+        rm -f "$SERVER_PID_FILE"
+    else
+        echo -e "${YELLOW}Server not running (no PID file)${NC}"
+    fi
+    
+    # Also kill any orphaned swift run processes
+    pkill -f "swift run" 2>/dev/null || true
 }
 
 stop_client() {
@@ -57,29 +93,15 @@ stop_client() {
     fi
     
     # Also kill any orphaned processes
-    local client_pids=$(pgrep -f "run_web.py" 2>/dev/null || true)
-    if [[ -n "$client_pids" ]]; then
-        echo "Cleaning up orphaned client processes..."
-        echo "$client_pids" | xargs kill 2>/dev/null || true
-    fi
-}
-
-check_server_running() {
-    if pgrep -x "PhotoShareServer" > /dev/null 2>&1; then
-        return 0
-    fi
-    if curl -s http://localhost:8080/health > /dev/null 2>&1; then
-        return 0
-    fi
-    return 1
+    pkill -f "run_web.py" 2>/dev/null || true
 }
 
 print_status() {
     echo ""
     echo -e "${BLUE}Current Status:${NC}"
     
-    if check_server_running; then
-        echo -e "  Server: ${GREEN}Running${NC} (use app to stop)"
+    if [[ -f "$SERVER_PID_FILE" ]] && kill -0 "$(cat "$SERVER_PID_FILE")" 2>/dev/null; then
+        echo -e "  Server: ${GREEN}Running${NC}"
     else
         echo -e "  Server: ${RED}Stopped${NC}"
     fi
@@ -95,5 +117,22 @@ print_status() {
 
 # Main
 print_banner
-stop_client
+
+case "${1:-all}" in
+    server)
+        stop_server
+        ;;
+    client|web)
+        stop_client
+        ;;
+    all|"")
+        stop_server
+        stop_client
+        ;;
+    *)
+        echo "Usage: $0 [server|client|all]"
+        exit 1
+        ;;
+esac
+
 print_status

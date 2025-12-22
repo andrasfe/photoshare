@@ -1,4 +1,6 @@
 # Runtime files (created by start.sh)
+.server.pid
+.server.log
 .client.pid
 .client.log
 

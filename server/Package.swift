@@ -15,10 +15,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Vapor", package: "vapor"),
             ],
-            path: "Sources/App",
-            resources: [
-                .copy("Resources/Info.plist")
-            ]
+            path: "Sources/App"
         ),
         .testTarget(
             name: "AppTests",

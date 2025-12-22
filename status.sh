@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # PhotoShare Status Script
-# Shows status of server app and client services.
+# Shows status of server and client services.
 #
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +14,8 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# PID file
+# PID files
+SERVER_PID_FILE="$SCRIPT_DIR/.server.pid"
 CLIENT_PID_FILE="$SCRIPT_DIR/.client.pid"
 
 echo -e "${BLUE}"
@@ -23,21 +24,20 @@ echo "║                      PhotoShare Status                        ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# Server status (app-based)
-echo -e "${CYAN}Server (PhotoShare Server App):${NC}"
-server_pid=$(pgrep -x "PhotoShareServer" 2>/dev/null || pgrep -x "PhotoShareServe" 2>/dev/null)
-if [[ -n "$server_pid" ]]; then
-    echo -e "  Status:  ${GREEN}● Running${NC} (PID: $server_pid)"
-    echo -e "  URL:     http://localhost:8080"
-    health=$(curl -s http://localhost:8080/health 2>/dev/null)
-    if [[ "$health" == "OK" ]]; then
-        echo -e "  Health:  ${GREEN}OK${NC}"
+# Server status
+echo -e "${CYAN}Server:${NC}"
+if [[ -f "$SERVER_PID_FILE" ]]; then
+    pid=$(cat "$SERVER_PID_FILE")
+    if kill -0 "$pid" 2>/dev/null; then
+        echo -e "  Status:  ${GREEN}● Running${NC} (PID: $pid)"
+        echo -e "  URL:     http://localhost:8080"
+        health=$(curl -s http://localhost:8080/health 2>/dev/null || echo "Unable to connect")
+        echo -e "  Health:  $health"
     else
-        echo -e "  Health:  ${YELLOW}Starting...${NC}"
+        echo -e "  Status:  ${RED}● Stopped${NC} (stale PID file)"
     fi
 else
-    echo -e "  Status:  ${RED}● Not running${NC}"
-    echo -e "  ${YELLOW}→ Launch the PhotoShare Server app to start${NC}"
+    echo -e "  Status:  ${RED}● Stopped${NC}"
 fi
 
 echo ""
@@ -69,16 +69,11 @@ fi
 
 echo ""
 
-# Quick commands
-echo -e "${CYAN}Commands:${NC}"
-echo -e "  Start client:  ${YELLOW}./start.sh${NC}"
-echo -e "  Stop client:   ${YELLOW}./stop.sh${NC}"
-echo -e "  Start server:  ${YELLOW}Open PhotoShare Server app${NC}"
-echo ""
+# System info
+echo -e "${CYAN}System:${NC}"
+echo -e "  OS:      $(uname -s) $(uname -r)"
+echo -e "  Swift:   $(swift --version 2>/dev/null | head -1 || echo 'Not installed')"
+echo -e "  Python:  $(python3 --version 2>/dev/null || echo 'Not installed')"
 
-# How to build server app
-if [[ ! -f "$SCRIPT_DIR/server-app/.build/debug/PhotoShareServer" ]]; then
-    echo -e "${CYAN}Build server app:${NC}"
-    echo -e "  ${BLUE}cd server-app && swift build${NC}"
-    echo ""
-fi
+echo ""
+echo -e "Commands: ${YELLOW}./start.sh${NC} | ${YELLOW}./stop.sh${NC} | ${YELLOW}./status.sh${NC}"
