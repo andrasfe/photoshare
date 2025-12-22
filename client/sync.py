@@ -52,7 +52,10 @@ class PhotoSyncClient:
         **kwargs,
     ) -> httpx.Response:
         """Make an authenticated request to the server."""
-        headers = generate_auth_headers(method, path, self.config.SHARED_SECRET)
+        # Extract just the path portion (without query string) for signature
+        # The server's HMAC middleware uses request.url.path which excludes query params
+        sign_path = path.split("?")[0]
+        headers = generate_auth_headers(method, sign_path, self.config.SHARED_SECRET)
         
         if "headers" in kwargs:
             headers.update(kwargs.pop("headers"))
