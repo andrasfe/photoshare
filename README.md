@@ -37,16 +37,18 @@ The server runs on macOS and exposes the Photos library via REST API.
 
 ### Client (Python)
 
-The client polls the server and downloads new photos.
+The client polls the server and downloads new photos. Available as both CLI and Web UI.
 
 **Location:** `client/`
 
 **Features:**
-- Hourly polling (configurable)
+- **CLI Mode**: Hourly polling (configurable), runs in background
+- **Web UI**: Modern interface with real-time progress
 - Incremental sync (only downloads new photos)
 - HMAC authentication matching server
 - Retry logic with error handling
 - Live Photo support (downloads both image and video)
+- Date filtering for selective sync
 
 ## Setup
 
@@ -118,11 +120,19 @@ The client polls the server and downloads new photos.
    ```
 
 5. Run the client:
+
+   **Option A: Web UI (Recommended)**
+   ```bash
+   python run_web.py
+   # Open http://localhost:8000 in your browser
+   ```
+
+   **Option B: CLI - continuous polling**
    ```bash
    python main.py
    ```
 
-   Or run once without continuous polling:
+   **Option C: CLI - run once**
    ```bash
    python main.py --once
    ```

@@ -1,6 +1,6 @@
 # PhotoShare Client
 
-Python client for syncing photos from a PhotoShare server.
+Python client for syncing photos from a PhotoShare server. Includes both a CLI client and a web UI.
 
 ## Quick Start
 
@@ -14,11 +14,15 @@ pip install -r requirements.txt
 export PHOTOSHARE_SERVER_URL=http://your-server:8080
 export PHOTOSHARE_SECRET=your-shared-secret
 
-# Run (continuous polling)
+# Run CLI (continuous polling)
 python main.py
 
-# Run once
+# Run CLI once
 python main.py --once
+
+# Run Web UI
+python run_web.py
+# Then open http://localhost:8000 in your browser
 ```
 
 ## Configuration
@@ -64,7 +68,36 @@ client/
 ├── config.py          # Configuration management
 ├── auth.py            # HMAC authentication
 ├── sync.py            # Sync logic
-└── main.py            # Entry point
+├── main.py            # CLI entry point
+├── run_web.py         # Web UI entry point
+├── web/
+│   ├── app.py         # FastAPI backend
+│   └── templates/
+│       └── index.html # Web UI template
+└── tests/             # Unit and integration tests
+```
+
+## Web UI
+
+The web client provides a modern interface for:
+
+- **Real-time sync progress** - See downloads as they happen via WebSocket
+- **Configuration** - Set destination directory and server URL
+- **Date filtering** - Choose a start date for syncing
+- **Statistics** - View total photos, storage used, file types
+- **Activity log** - Real-time log of sync operations
+
+### Running the Web UI
+
+```bash
+# Default (http://localhost:8000)
+python run_web.py
+
+# Custom host/port
+python run_web.py --host 127.0.0.1 --port 3000
+
+# Development mode with auto-reload
+python run_web.py --reload
 ```
 
 ## How It Works
