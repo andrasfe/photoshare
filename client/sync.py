@@ -112,13 +112,9 @@ class PhotoSyncClient:
         Returns:
             Path to the downloaded file, or None if download failed
         """
-        # Determine if this is a Live Photo
-        is_live_photo = "livePhoto" in photo_metadata.get("mediaSubtypes", [])
-        
-        if is_live_photo:
-            return self._download_live_photo(photo_id, photo_metadata)
-        else:
-            return self._download_regular_photo(photo_id, photo_metadata)
+        # Always use regular download (Live Photo endpoint not always available)
+        # Live Photos will be downloaded as their primary image
+        return self._download_regular_photo(photo_id, photo_metadata)
     
     def _download_regular_photo(self, photo_id: str, photo_metadata: dict) -> Optional[Path]:
         """Download a regular photo or video."""
