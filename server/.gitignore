@@ -1,0 +1,20 @@
+# Xcode
+.DS_Store
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.swiftpm/
+*.xcworkspace
+
+# Swift Package Manager
+.build/
+Packages/
+
+# Environment files with secrets
+.env
+
+# IDE
+.idea/
+*.sublime-*
+.vscode/
+

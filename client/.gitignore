@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+.venv/
+
+# Environment and secrets
+.env
+
+# Sync state
+.sync_state
+
+# Downloads
+downloads/
+
+# IDE
+.idea/
+*.sublime-*
+.vscode/
+
