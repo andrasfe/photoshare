@@ -33,14 +33,21 @@ Open **http://localhost:8000** in your browser.
 
 ## Configuration
 
-Set these environment variables before starting:
+Copy `.env.example` to `.env` and edit:
 
 ```bash
-export PHOTOSHARE_SECRET=your-secure-secret-here
-export PHOTOSHARE_SERVER_URL=http://server-ip:8080  # for client
+cp .env.example .env
+```
+
+```bash
+# .env
+PHOTOSHARE_SECRET=your-secure-secret-here
+PHOTOSHARE_SERVER_URL=http://server-ip:8080
 ```
 
 Generate a secure secret: `openssl rand -hex 32`
+
+**Note:** The server also needs `PHOTOSHARE_SECRET` set as an environment variable.
 
 ## API
 
