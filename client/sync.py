@@ -123,32 +123,46 @@ class PhotoSyncClient:
         
         # Mark as downloaded if successful
         if result and result != "skipped":
-            self._mark_as_downloaded(photo_id)
+            self._mark_as_downloaded(photo_id, result.name)
         
         return result
     
     def _is_already_downloaded(self, photo_id: str) -> bool:
-        """Check if a photo has already been downloaded."""
+        """Check if a photo has already been downloaded AND file still exists."""
         downloaded_file = self.config.DOWNLOAD_DIR / ".downloaded_ids.json"
         if not downloaded_file.exists():
             return False
         try:
             downloaded = json.loads(downloaded_file.read_text())
-            return photo_id in downloaded
+            # Check if ID is tracked
+            if photo_id not in downloaded:
+                return False
+            # Check if the file still exists on disk
+            filename = downloaded[photo_id]
+            file_path = self.config.DOWNLOAD_DIR / filename
+            if not file_path.exists():
+                # File was deleted, remove from tracking
+                del downloaded[photo_id]
+                downloaded_file.write_text(json.dumps(downloaded))
+                logger.info(f"File {filename} was deleted, will re-download")
+                return False
+            return True
         except:
             return False
     
-    def _mark_as_downloaded(self, photo_id: str) -> None:
-        """Mark a photo as downloaded."""
+    def _mark_as_downloaded(self, photo_id: str, filename: str) -> None:
+        """Mark a photo as downloaded with its filename."""
         downloaded_file = self.config.DOWNLOAD_DIR / ".downloaded_ids.json"
         try:
             if downloaded_file.exists():
                 downloaded = json.loads(downloaded_file.read_text())
+                # Migrate old list format to dict format
+                if isinstance(downloaded, list):
+                    downloaded = {}
             else:
-                downloaded = []
-            if photo_id not in downloaded:
-                downloaded.append(photo_id)
-                downloaded_file.write_text(json.dumps(downloaded))
+                downloaded = {}
+            downloaded[photo_id] = filename
+            downloaded_file.write_text(json.dumps(downloaded))
         except:
             pass
     
