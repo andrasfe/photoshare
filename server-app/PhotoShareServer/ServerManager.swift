@@ -207,7 +207,10 @@ class ServerManager: ObservableObject {
             
             let sinceTimestamp: Double? = req.query["since"]
             let sinceDate = sinceTimestamp.map { Date(timeIntervalSince1970: $0) }
-            let includeJpeg: Bool = req.query["include_jpeg"] ?? true
+            
+            // Parse include_jpeg as string then convert to bool (Vapor may not parse "true"/"false" strings)
+            let includeJpegStr: String? = req.query["include_jpeg"]
+            let includeJpeg = includeJpegStr?.lowercased() != "false"  // Default true unless explicitly "false"
             
             let photos = try await self?.fetchPhotos(since: sinceDate, includeJpegVersions: includeJpeg) ?? []
             

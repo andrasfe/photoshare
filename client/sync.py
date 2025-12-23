@@ -81,19 +81,25 @@ class PhotoSyncClient:
         state = {"last_sync_timestamp": timestamp}
         self.config.STATE_FILE.write_text(json.dumps(state))
     
-    def list_photos(self, since: Optional[float] = None) -> List[dict]:
+    def list_photos(self, since: Optional[float] = None, include_jpeg: bool = True) -> List[dict]:
         """
         List photos from the server.
         
         Args:
             since: Only return photos created after this Unix timestamp
+            include_jpeg: Include JPEG versions of HEIC images
         
         Returns:
             List of photo metadata dictionaries
         """
-        path = "/photos"
+        params = []
         if since is not None:
-            path = f"/photos?since={since}"
+            params.append(f"since={since}")
+        params.append(f"include_jpeg={'true' if include_jpeg else 'false'}")
+        
+        path = "/photos"
+        if params:
+            path = f"/photos?{'&'.join(params)}"
         
         response = self._make_request("GET", path)
         data = response.json()
