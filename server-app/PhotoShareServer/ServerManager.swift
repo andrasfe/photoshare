@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 import Photos
 import Vapor
 import Crypto
@@ -236,8 +237,14 @@ class ServerManager: ObservableObject {
                 self?.photosServed += 1
             }
             
-            guard let id = req.parameters.get("id") else {
+            guard var id = req.parameters.get("id") else {
                 throw Abort(.badRequest, reason: "Missing photo ID")
+            }
+            
+            // Check if requesting JPEG conversion
+            let wantsJpeg = id.hasSuffix("__jpeg")
+            if wantsJpeg {
+                id = String(id.dropLast(7)) // Remove "__jpeg" suffix
             }
             
             let result = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil)
@@ -245,9 +252,24 @@ class ServerManager: ObservableObject {
                 throw Abort(.notFound, reason: "Photo not found")
             }
             
-            let (data, filename, uti) = try await self?.exportAssetData(asset: asset) ?? (Data(), "photo.jpg", "public.jpeg")
+            let data: Data
+            let filename: String
+            let contentType: String
             
-            let contentType = Self.mimeType(from: uti)
+            if wantsJpeg && asset.mediaType == .image {
+                // Convert to JPEG
+                let (jpegData, jpegFilename) = try await self?.exportAssetAsJpeg(asset: asset) ?? (Data(), "photo.jpg")
+                data = jpegData
+                filename = jpegFilename
+                contentType = "image/jpeg"
+            } else {
+                // Serve original format
+                let (originalData, originalFilename, uti) = try await self?.exportAssetData(asset: asset) ?? (Data(), "photo.jpg", "public.jpeg")
+                data = originalData
+                filename = originalFilename
+                contentType = Self.mimeType(from: uti)
+            }
+            
             var headers = HTTPHeaders()
             headers.add(name: .contentType, value: contentType)
             headers.add(name: .contentDisposition, value: "attachment; filename=\"\(filename)\"")
@@ -276,10 +298,35 @@ class ServerManager: ObservableObject {
         
         var photos: [PhotoMetadata] = []
         assets.enumerateObjects { asset, _, _ in
-            photos.append(PhotoMetadata(from: asset))
+            // Get the original format
+            let resources = PHAssetResource.assetResources(for: asset)
+            let primaryResource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
+            let uti = primaryResource?.uniformTypeIdentifier ?? ""
+            let isHeic = uti.contains("heic") || uti.contains("heif")
+            let format = Self.formatFromUTI(uti)
+            
+            // Add original
+            photos.append(PhotoMetadata(from: asset, format: format, isConverted: false))
+            
+            // For HEIC/HEIF images, also add a JPEG version
+            if isHeic && asset.mediaType == .image {
+                photos.append(PhotoMetadata(from: asset, format: "jpeg", isConverted: true, idSuffix: "__jpeg"))
+            }
         }
         
         return photos
+    }
+    
+    private static func formatFromUTI(_ uti: String) -> String {
+        if uti.contains("heic") { return "heic" }
+        if uti.contains("heif") { return "heif" }
+        if uti.contains("jpeg") || uti.contains("jpg") { return "jpeg" }
+        if uti.contains("png") { return "png" }
+        if uti.contains("gif") { return "gif" }
+        if uti.contains("tiff") { return "tiff" }
+        if uti.contains("mpeg-4") || uti.contains("mp4") { return "mp4" }
+        if uti.contains("quicktime") { return "mov" }
+        return "unknown"
     }
     
     private func fetchPhoto(id: String) async throws -> PhotoMetadata? {
@@ -311,6 +358,50 @@ class ServerManager: ObservableObject {
                 } else {
                     continuation.resume(returning: (data, resource.originalFilename, resource.uniformTypeIdentifier))
                 }
+            }
+        }
+    }
+    
+    private func exportAssetAsJpeg(asset: PHAsset) async throws -> (Data, String) {
+        return try await withCheckedThrowingContinuation { continuation in
+            let options = PHImageRequestOptions()
+            options.version = .current
+            options.deliveryMode = .highQualityFormat
+            options.isNetworkAccessAllowed = true
+            options.isSynchronous = false
+            
+            // Request full-size image
+            let targetSize = CGSize(width: asset.pixelWidth, height: asset.pixelHeight)
+            
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: targetSize,
+                contentMode: .aspectFit,
+                options: options
+            ) { image, info in
+                // Check if this is the final image (not a degraded preview)
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                if isDegraded { return }
+                
+                guard let nsImage = image else {
+                    continuation.resume(throwing: Abort(.internalServerError, reason: "Failed to load image"))
+                    return
+                }
+                
+                // Convert NSImage to JPEG data
+                guard let tiffData = nsImage.tiffRepresentation,
+                      let bitmap = NSBitmapImageRep(data: tiffData),
+                      let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) else {
+                    continuation.resume(throwing: Abort(.internalServerError, reason: "Failed to convert to JPEG"))
+                    return
+                }
+                
+                // Generate filename
+                let resources = PHAssetResource.assetResources(for: asset)
+                let originalFilename = resources.first?.originalFilename ?? "photo"
+                let jpegFilename = (originalFilename as NSString).deletingPathExtension + ".jpg"
+                
+                continuation.resume(returning: (jpegData, jpegFilename))
             }
         }
     }
@@ -459,9 +550,11 @@ struct PhotoMetadata: Content {
     let duration: Double
     let isFavorite: Bool
     let isHidden: Bool
+    let format: String  // "heic", "jpeg", "png", etc.
+    let isConverted: Bool  // true if this is a converted version (e.g., HEIC→JPEG)
     
-    init(from asset: PHAsset) {
-        self.id = asset.localIdentifier
+    init(from asset: PHAsset, format: String = "original", isConverted: Bool = false, idSuffix: String = "") {
+        self.id = asset.localIdentifier + idSuffix
         self.creationDate = asset.creationDate
         self.modificationDate = asset.modificationDate
         self.pixelWidth = asset.pixelWidth
@@ -469,6 +562,8 @@ struct PhotoMetadata: Content {
         self.duration = asset.duration
         self.isFavorite = asset.isFavorite
         self.isHidden = asset.isHidden
+        self.format = format
+        self.isConverted = isConverted
         
         switch asset.mediaType {
         case .image: self.mediaType = "image"
