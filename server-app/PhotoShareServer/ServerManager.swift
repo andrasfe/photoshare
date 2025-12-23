@@ -15,6 +15,7 @@ class ServerManager: ObservableObject {
     
     private var app: Application?
     private var startTime: Date?
+    private var envVars: [String: String] = [:]
     
     var uptimeString: String {
         guard let start = startTime, isRunning else { return "--" }
@@ -33,8 +34,63 @@ class ServerManager: ObservableObject {
     }
     
     init() {
+        loadEnvFile()
         checkPhotosAuth()
-        hasCustomSecret = ProcessInfo.processInfo.environment["PHOTOSHARE_SECRET"] != nil
+        hasCustomSecret = getEnv("PHOTOSHARE_SECRET") != nil
+    }
+    
+    /// Load .env file from project root
+    private func loadEnvFile() {
+        // Try to find .env in common locations
+        let possiblePaths = [
+            // When running from Xcode or swift run in server-app
+            FileManager.default.currentDirectoryPath + "/../.env",
+            FileManager.default.currentDirectoryPath + "/.env",
+            // Relative to executable
+            Bundle.main.bundlePath + "/../../.env",
+            Bundle.main.bundlePath + "/../../../.env",
+            Bundle.main.bundlePath + "/../../../../.env",
+            // Home directory fallback
+            NSHomeDirectory() + "/photoshare/.env"
+        ]
+        
+        for path in possiblePaths {
+            let url = URL(fileURLWithPath: path).standardized
+            if FileManager.default.fileExists(atPath: url.path) {
+                parseEnvFile(at: url)
+                return
+            }
+        }
+    }
+    
+    private func parseEnvFile(at url: URL) {
+        guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return }
+        
+        for line in contents.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Skip empty lines and comments
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+            
+            // Parse KEY=VALUE
+            if let equalIndex = trimmed.firstIndex(of: "=") {
+                let key = String(trimmed[..<equalIndex]).trimmingCharacters(in: .whitespaces)
+                var value = String(trimmed[trimmed.index(after: equalIndex)...]).trimmingCharacters(in: .whitespaces)
+                
+                // Remove quotes if present
+                if (value.hasPrefix("\"") && value.hasSuffix("\"")) ||
+                   (value.hasPrefix("'") && value.hasSuffix("'")) {
+                    value = String(value.dropFirst().dropLast())
+                }
+                
+                envVars[key] = value
+            }
+        }
+    }
+    
+    /// Get environment variable - checks .env first, then process environment
+    func getEnv(_ key: String) -> String? {
+        return envVars[key] ?? ProcessInfo.processInfo.environment[key]
     }
     
     func checkPhotosAuth() {
@@ -60,6 +116,9 @@ class ServerManager: ObservableObject {
         
         log("Starting server...")
         
+        // Get secret before entering detached task
+        let sharedSecret = getEnv("PHOTOSHARE_SECRET") ?? "development-secret-change-me"
+        
         Task.detached { [weak self] in
             do {
                 var env = try Environment.detect()
@@ -72,7 +131,6 @@ class ServerManager: ObservableObject {
                 }
                 
                 // Configure
-                let sharedSecret = Environment.get("PHOTOSHARE_SECRET") ?? "development-secret-change-me"
                 app.storage[SharedSecretKey.self] = sharedSecret
                 app.http.server.configuration.hostname = "0.0.0.0"
                 app.http.server.configuration.port = 8080

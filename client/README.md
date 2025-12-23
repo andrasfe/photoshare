@@ -27,17 +27,12 @@ python run_web.py
 
 ## Configuration
 
-Copy `.env.example` to `.env` and edit:
+The client uses the `.env` file in the project root (shared with server):
 
 ```bash
-cp ../.env.example .env
-# or
-cp ../.env.example ../.env  # place in project root
+# From project root
+cp .env.example .env
 ```
-
-The client looks for `.env` in this order:
-1. `client/.env`
-2. Project root `.env`
 
 Example `.env`:
 

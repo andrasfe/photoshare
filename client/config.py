@@ -4,16 +4,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-# Check client directory first, then project root
+# Load environment variables from .env file in project root
 _client_dir = Path(__file__).parent
 _project_root = _client_dir.parent
 
-# Try to load from client/.env first, then from project root/.env
-if (_client_dir / ".env").exists():
-    load_dotenv(_client_dir / ".env")
-elif (_project_root / ".env").exists():
-    load_dotenv(_project_root / ".env")
+# Load from project root .env
+_env_file = _project_root / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file)
 else:
     load_dotenv()  # Fall back to default behavior
 
