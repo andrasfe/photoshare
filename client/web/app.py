@@ -229,26 +229,42 @@ async def health_check():
 async def browse_folder():
     """Open a native folder picker dialog."""
     import subprocess
+    import platform
     
-    # Use osascript to open a native folder picker on macOS
-    script = '''
-    set chosenFolder to choose folder with prompt "Select Download Directory"
-    return POSIX path of chosenFolder
-    '''
+    system = platform.system()
     
     try:
-        result = subprocess.run(
-            ['osascript', '-e', script],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        if system == "Darwin":  # macOS
+            script = '''
+            set chosenFolder to choose folder with prompt "Select Download Directory"
+            return POSIX path of chosenFolder
+            '''
+            result = subprocess.run(
+                ['osascript', '-e', script],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+        elif system == "Linux":
+            # Use zenity on Linux (install with: sudo apt install zenity)
+            result = subprocess.run(
+                ['zenity', '--file-selection', '--directory', '--title=Select Download Directory'],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+        else:
+            return {"path": None, "success": False, "error": f"Unsupported platform: {system}"}
         
         if result.returncode == 0:
             folder_path = result.stdout.strip()
             return {"path": folder_path, "success": True}
         else:
             return {"path": None, "success": False, "error": "User cancelled"}
+    except FileNotFoundError:
+        if system == "Linux":
+            return {"path": None, "success": False, "error": "zenity not found. Install with: sudo apt install zenity"}
+        return {"path": None, "success": False, "error": "Required tool not found"}
     except subprocess.TimeoutExpired:
         return {"path": None, "success": False, "error": "Dialog timeout"}
     except Exception as e:
