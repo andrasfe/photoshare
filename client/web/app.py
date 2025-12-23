@@ -233,28 +233,39 @@ async def browse_folder():
     
     system = platform.system()
     
-    try:
+    def run_picker():
+        """Run the folder picker in a thread to avoid blocking the event loop."""
         if system == "Darwin":  # macOS
             script = '''
             set chosenFolder to choose folder with prompt "Select Download Directory"
             return POSIX path of chosenFolder
             '''
-            result = subprocess.run(
+            return subprocess.run(
                 ['osascript', '-e', script],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=120
             )
         elif system == "Linux":
             # Use zenity on Linux (install with: sudo apt install zenity)
-            result = subprocess.run(
+            return subprocess.run(
                 ['zenity', '--file-selection', '--directory', '--title=Select Download Directory'],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=120
             )
         else:
+            return None
+    
+    try:
+        if system not in ("Darwin", "Linux"):
             return {"path": None, "success": False, "error": f"Unsupported platform: {system}"}
+        
+        # Run in thread pool to avoid blocking async event loop
+        result = await asyncio.to_thread(run_picker)
+        
+        if result is None:
+            return {"path": None, "success": False, "error": "Picker failed"}
         
         if result.returncode == 0:
             folder_path = result.stdout.strip()
