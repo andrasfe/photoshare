@@ -207,8 +207,9 @@ class ServerManager: ObservableObject {
             
             let sinceTimestamp: Double? = req.query["since"]
             let sinceDate = sinceTimestamp.map { Date(timeIntervalSince1970: $0) }
+            let includeJpeg: Bool = req.query["include_jpeg"] ?? true
             
-            let photos = try await self?.fetchPhotos(since: sinceDate) ?? []
+            let photos = try await self?.fetchPhotos(since: sinceDate, includeJpegVersions: includeJpeg) ?? []
             
             return PhotoListResponse(count: photos.count, photos: photos)
         }
@@ -282,7 +283,7 @@ class ServerManager: ObservableObject {
     
     // MARK: - PhotoKit Integration
     
-    private func fetchPhotos(since: Date?) async throws -> [PhotoMetadata] {
+    private func fetchPhotos(since: Date?, includeJpegVersions: Bool = true) async throws -> [PhotoMetadata] {
         guard photosAuthStatus == .authorized || photosAuthStatus == .limited else {
             throw Abort(.forbidden, reason: "Photos access not granted")
         }
@@ -298,35 +299,17 @@ class ServerManager: ObservableObject {
         
         var photos: [PhotoMetadata] = []
         assets.enumerateObjects { asset, _, _ in
-            // Get the original format
-            let resources = PHAssetResource.assetResources(for: asset)
-            let primaryResource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
-            let uti = primaryResource?.uniformTypeIdentifier ?? ""
-            let isHeic = uti.contains("heic") || uti.contains("heif")
-            let format = Self.formatFromUTI(uti)
+            // Add original (format detected during download, not here for performance)
+            photos.append(PhotoMetadata(from: asset, format: "original", isConverted: false))
             
-            // Add original
-            photos.append(PhotoMetadata(from: asset, format: format, isConverted: false))
-            
-            // For HEIC/HEIF images, also add a JPEG version
-            if isHeic && asset.mediaType == .image {
+            // For images, also add a JPEG version option
+            // (actual format check happens during download)
+            if includeJpegVersions && asset.mediaType == .image {
                 photos.append(PhotoMetadata(from: asset, format: "jpeg", isConverted: true, idSuffix: "__jpeg"))
             }
         }
         
         return photos
-    }
-    
-    private static func formatFromUTI(_ uti: String) -> String {
-        if uti.contains("heic") { return "heic" }
-        if uti.contains("heif") { return "heif" }
-        if uti.contains("jpeg") || uti.contains("jpg") { return "jpeg" }
-        if uti.contains("png") { return "png" }
-        if uti.contains("gif") { return "gif" }
-        if uti.contains("tiff") { return "tiff" }
-        if uti.contains("mpeg-4") || uti.contains("mp4") { return "mp4" }
-        if uti.contains("quicktime") { return "mov" }
-        return "unknown"
     }
     
     private func fetchPhoto(id: String) async throws -> PhotoMetadata? {
